@@ -1,0 +1,7 @@
+{
+  "name": "Nearby Discovery",
+  "description": "An elegant web app to discover restaurants, cafes, and other points of interest around you using Gemini's advanced search capabilities. Customize your search radius and enable 'Thinking Mode' for more complex queries.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

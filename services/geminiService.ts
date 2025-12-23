@@ -66,34 +66,33 @@ export const findEateries = async ({ categories, radius, isThinkingMode, locatio
   // We use Google Search to find menus and Grab/Shopee presence, which Maps tool often lacks.
   // We explicitly ask for JSON output in the prompt because we cannot use responseSchema with googleSearch.
   const prompt = `
-    Bạn là một chuyên gia phân tích thị trường chuyên nghiệp.
-    Thực hiện tìm kiếm cho "${query}" trong bán kính ${radius}km từ tọa độ latitude ${location.latitude}, longitude ${location.longitude}.
+    Act as a professional Market Research Analyst.
+    Conduct a search for "${query}" within a ${radius}km radius of latitude ${location.latitude}, longitude ${location.longitude}.
     
-    Mục tiêu nghiên cứu cụ thể:
-    1. Xác định các cơ sở được đánh giá cao nhất.
-    2. TÌM THÔNG TIN LIÊN HỆ: Tìm số điện thoại và email (kiểm tra Facebook/Instagram/Website nếu có).
-    3. SỰ HIỆN DIỆN TRÊN NỀN TẢNG GIAO HÀNG: Tìm kiếm cụ thể xem họ có được liệt kê trên "GrabFood" hoặc "ShopeeFood" không.
-    4. PHÂN TÍCH MENU ĐẦY ĐỦ: Trích xuất menu HOÀN CHỈNH với tất cả các món. Đối với mỗi nhà hàng, tìm:
-       - Tất cả các món ăn với tên
-       - Giá (nếu có)
-       - Danh mục (ví dụ: "Khai vị", "Món chính", "Tráng miệng", "Đồ uống")
-       - Mô tả bằng TIẾNG VIỆT (nếu có, mô tả ngắn gọn về món ăn)
-       - Cố gắng lấy ít nhất 10-20 món ăn cho mỗi nhà hàng, càng nhiều càng tốt
+    Specific Research Objectives:
+    1. Identify top-rated establishments.
+    2. FIND CONTACT INFO: Look for phone numbers and emails (check their Facebook/Instagram/Website if found).
+    3. DELIVERY PRESENCE: Specifically search if they are listed on "GrabFood" or "ShopeeFood".
+    4. FULL MENU ANALYSIS: Extract the COMPLETE menu with all items. For each restaurant, find:
+       - All menu items with names
+       - Prices (if available)
+       - Categories (e.g., "Appetizers", "Main Courses", "Desserts", "Beverages")
+       - Descriptions (if available)
+       - Try to get at least 10-20 menu items per restaurant, more if possible
     
-    Định dạng đầu ra:
-    Bạn phải xuất JSON hợp lệ nghiêm ngặt trong khối code \`\`\`json ... \`\`\`.
-    Cấu trúc JSON phải là một danh sách các đối tượng với các trường sau:
-    - name (string: tên nhà hàng)
-    - address (string: địa chỉ)
-    - description (string: tóm tắt chuyên nghiệp về doanh nghiệp)
+    Output Format:
+    You must output strictly valid JSON inside a code block \`\`\`json ... \`\`\`.
+    The JSON structure must be a list of objects with these fields:
+    - name (string)
+    - address (string)
+    - description (string: professional business summary)
     - email (string | null)
     - phone (string | null)
-    - menu (mảng các đối tượng với: name (tên món), price (giá, tùy chọn), description (mô tả bằng TIẾNG VIỆT, tùy chọn), category (danh mục bằng TIẾNG VIỆT, tùy chọn))
-    - platforms (mảng các chuỗi: ví dụ ["GrabFood", "ShopeeFood", "Gojek"])
-    - rating (string | null: ví dụ "4.5/5")
+    - menu (array of objects with: name, price (optional), description (optional), category (optional))
+    - platforms (array of strings: e.g. ["GrabFood", "ShopeeFood", "Gojek"])
+    - rating (string | null: e.g. "4.5/5")
 
-    KHÔNG bao gồm văn bản markdown bên ngoài khối JSON.
-    QUAN TRỌNG: Tất cả description của menu items phải được viết bằng TIẾNG VIỆT.
+    Do not include markdown text outside the JSON block.
   `;
 
   const config: any = { 

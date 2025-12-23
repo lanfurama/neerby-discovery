@@ -3,6 +3,8 @@ import { searchNearbyPlaces } from './googlePlacesService';
 import { enrichRestaurantWithGrabFood } from './grabFoodService';
 import { enrichRestaurantWithShopeeFood } from './shopeeFoodService';
 import { findEateries as findEateriesWithGemini } from './geminiService';
+import { calculateDistance } from '../utils/calculateDistance';
+import { matchesCategory } from '../utils/categoryMapping';
 
 /**
  * Main service that aggregates data from multiple sources:
@@ -25,8 +27,43 @@ export const findEateries = async ({
   const query = categories.join(' or ');
   
   // Step 1: Get restaurants from Google Places API (most accurate)
-  console.log('Fetching restaurants from Google Places API...');
+  console.log(`Fetching restaurants from Google Places API within ${radius}km...`);
+  // Gọi API với radius chính xác (tính bằng mét), sau đó filter lại để đảm bảo chính xác
   const placesResults = await searchNearbyPlaces(location, query, radius * 1000);
+  
+  console.log(`Received ${placesResults.length} places from Google Places API`);
+  
+  // Filter kết quả theo bán kính chính xác và category
+  const filteredPlacesResults = placesResults.filter((place) => {
+    // Kiểm tra bán kính
+    if (!place.latitude || !place.longitude) {
+      console.warn(`Place ${place.name} has no coordinates, skipping`);
+      return false;
+    }
+    const distance = calculateDistance(location, {
+      latitude: place.latitude,
+      longitude: place.longitude,
+    });
+    
+    // Log để debug (chỉ log một vài kết quả đầu tiên)
+    if (placesResults.indexOf(place) < 5) {
+      console.log(`Place: ${place.name}, Distance: ${distance.toFixed(2)}km, Radius limit: ${radius}km, Types: ${place.placeTypes?.join(', ') || 'none'}`);
+    }
+    
+    // Filter chặt chẽ: chỉ giữ kết quả trong bán kính (không có margin)
+    if (distance > radius) {
+      return false;
+    }
+    
+    // Kiểm tra category match
+    const categoryMatch = matchesCategory(place.placeTypes, categories);
+    if (!categoryMatch && placesResults.indexOf(place) < 3) {
+      console.log(`Place ${place.name} filtered out due to category mismatch`);
+    }
+    return categoryMatch;
+  });
+  
+  console.log(`Filtered ${filteredPlacesResults.length} places within ${radius}km and matching categories from ${placesResults.length} total results`);
   
   // Step 2: Get additional insights from Gemini AI
   console.log('Fetching additional insights from Gemini AI...');
@@ -39,6 +76,20 @@ export const findEateries = async ({
       isThinkingMode,
       location,
     });
+    
+    // Filter Gemini results theo bán kính chính xác
+    geminiResults.restaurants = geminiResults.restaurants.filter((restaurant) => {
+      if (!restaurant.latitude || !restaurant.longitude) {
+        // Nếu không có tọa độ, loại bỏ vì không thể verify bán kính
+        return false;
+      }
+      const distance = calculateDistance(location, {
+        latitude: restaurant.latitude,
+        longitude: restaurant.longitude,
+      });
+      // Filter chặt chẽ: chỉ giữ kết quả trong bán kính
+      return distance <= radius;
+    });
   } catch (error) {
     console.warn('Gemini API failed, continuing with Places data only:', error);
   }
@@ -48,7 +99,7 @@ export const findEateries = async ({
   const sources: GroundingSource[] = [...geminiResults.sources];
   
   // Start with Google Places results (most reliable)
-  for (const place of placesResults) {
+  for (const place of filteredPlacesResults) {
     // Try to find matching Gemini result for additional info
     const geminiMatch = geminiResults.restaurants.find(
       (g) =>
@@ -112,15 +163,29 @@ export const findEateries = async ({
     }
   }
   
+  // Filter cuối cùng để đảm bảo tất cả kết quả đều trong bán kính
+  const finalFilteredRestaurants = enrichedRestaurants.filter((restaurant) => {
+    if (!restaurant.latitude || !restaurant.longitude) {
+      return false; // Loại bỏ nếu không có tọa độ
+    }
+    const distance = calculateDistance(location, {
+      latitude: restaurant.latitude,
+      longitude: restaurant.longitude,
+    });
+    return distance <= radius;
+  });
+  
+  console.log(`Final filtered: ${finalFilteredRestaurants.length} restaurants within ${radius}km`);
+  
   // Sort by rating (if available) or name
-  enrichedRestaurants.sort((a, b) => {
+  finalFilteredRestaurants.sort((a, b) => {
     const ratingA = a.rating ? parseFloat(a.rating.split('/')[0]) : 0;
     const ratingB = b.rating ? parseFloat(b.rating.split('/')[0]) : 0;
     return ratingB - ratingA;
   });
   
   return {
-    restaurants: enrichedRestaurants,
+    restaurants: finalFilteredRestaurants,
     sources,
   };
 };

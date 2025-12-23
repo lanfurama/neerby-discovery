@@ -30,6 +30,7 @@ export interface Restaurant {
   photos?: string[]; // Photo URLs
   grabFoodUrl?: string;
   shopeeFoodUrl?: string;
+  placeTypes?: string[]; // Google Places API types for filtering
 }
 
 export interface GroundingSource {

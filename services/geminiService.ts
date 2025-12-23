@@ -65,26 +65,46 @@ export const findEateries = async ({ categories, radius, isThinkingMode, locatio
   
   // We use Google Search to find menus and Grab/Shopee presence, which Maps tool often lacks.
   // We explicitly ask for JSON output in the prompt because we cannot use responseSchema with googleSearch.
+  // Tạo mô tả category rõ ràng hơn
+  const categoryDescriptions: Record<string, string> = {
+    'Coffee': 'coffee shops, cafes, coffee houses',
+    'Restaurant': 'restaurants, dining establishments',
+    'Bistro': 'bistros, casual dining restaurants',
+    'Street Food': 'street food vendors, food stalls, street food establishments',
+    'Bakery': 'bakeries, pastry shops',
+    'Resort/Hotel': 'resorts, hotels, lodging establishments, accommodation facilities',
+  };
+  
+  const categoryQuery = categories.map(cat => {
+    const desc = categoryDescriptions[cat] || cat.toLowerCase();
+    return desc;
+  }).join(' or ');
+  
   const prompt = `
-    Act as a professional Market Research Analyst.
-    Conduct a search for "${query}" within a ${radius}km radius of latitude ${location.latitude}, longitude ${location.longitude}.
+    Use Google Maps to search for ${categoryQuery} within ${radius}km radius from coordinates: ${location.latitude}, ${location.longitude}.
     
-    Specific Research Objectives:
-    1. Identify top-rated establishments.
-    2. FIND CONTACT INFO: Look for phone numbers and emails (check their Facebook/Instagram/Website if found).
-    3. DELIVERY PRESENCE: Specifically search if they are listed on "GrabFood" or "ShopeeFood".
-    4. FULL MENU ANALYSIS: Extract the COMPLETE menu with all items. For each restaurant, find:
-       - All menu items with names
-       - Prices (if available)
-       - Categories (e.g., "Appetizers", "Main Courses", "Desserts", "Beverages")
-       - Descriptions (if available)
-       - Try to get at least 10-20 menu items per restaurant, more if possible
+    CRITICAL REQUIREMENTS:
+    1. Use Google Maps search tool to find places near the specified coordinates
+    2. Only return establishments that match the requested category: ${categories.join(', ')}
+    3. If searching for "Resort/Hotel", do NOT include cafes, coffee shops, or restaurants
+    4. If searching for "Coffee", do NOT include hotels or resorts
+    5. Each result MUST include latitude and longitude coordinates from Google Maps
+    6. Filter results to only include places within ${radius}km from the center point
+    
+    For each establishment found, extract:
+    1. Name, address, and exact coordinates (latitude, longitude) from Google Maps
+    2. Contact information: phone numbers and emails (check their websites/social media if found)
+    3. Rating and review information
+    4. Delivery platform presence: Check if listed on "GrabFood" or "ShopeeFood" (if applicable)
+    5. Menu items (if applicable): Complete menu with names, prices, categories, descriptions
     
     Output Format:
-    You must output strictly valid JSON inside a code block \`\`\`json ... \`\`\`.
-    The JSON structure must be a list of objects with these fields:
+    You must output strictly valid JSON inside a code block \`\`\`json ... \`\`\`. 
+    The JSON structure must be a list of objects with these REQUIRED fields:
     - name (string)
     - address (string)
+    - latitude (number) - REQUIRED: exact latitude from Google Maps
+    - longitude (number) - REQUIRED: exact longitude from Google Maps
     - description (string: professional business summary)
     - email (string | null)
     - phone (string | null)
@@ -96,7 +116,7 @@ export const findEateries = async ({ categories, radius, isThinkingMode, locatio
   `;
 
   const config: any = { 
-    tools: [{ googleSearch: {} }],
+    tools: [{ googleMaps: {} }],
   };
       
   try {
@@ -129,6 +149,17 @@ export const findEateries = async ({ categories, radius, isThinkingMode, locatio
             console.warn("Could not parse JSON structure from response.");
         }
     }
+    
+    // Validate và đảm bảo có tọa độ
+    restaurants = restaurants.filter((r: any) => {
+        if (!r.latitude || !r.longitude) {
+            console.warn(`Restaurant ${r.name} missing coordinates, skipping`);
+            return false;
+        }
+        return true;
+    });
+    
+    console.log(`Gemini found ${restaurants.length} establishments with coordinates`);
 
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const sources: GroundingSource[] = groundingChunks

@@ -9,7 +9,7 @@ interface ControlsProps {
   setViewMode: (mode: 'grid' | 'table') => void;
 }
 
-const CATEGORIES = ["Coffee", "Restaurant", "Bistro", "Street Food", "Bakery"];
+const CATEGORIES = ["Coffee", "Restaurant", "Bistro", "Street Food", "Bakery", "Resort/Hotel"];
 
 const Controls: React.FC<ControlsProps> = ({ onSearch, isLoading, viewMode, setViewMode }) => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['Restaurant']);

@@ -40,6 +40,7 @@ interface PlaceDetailsResponse {
     opening_hours?: {
       weekday_text: string[];
     };
+    types?: string[];
   };
   status: string;
 }
@@ -86,7 +87,7 @@ export const searchNearbyPlaces = async (
           const detailsUrl = 'https://maps.googleapis.com/maps/api/place/details/json';
           const detailsParams = new URLSearchParams({
             place_id: place.place_id,
-            fields: 'formatted_phone_number,website,email,opening_hours',
+            fields: 'formatted_phone_number,website,email,opening_hours,types',
             key: GOOGLE_PLACES_API_KEY,
           });
 
@@ -110,6 +111,9 @@ export const searchNearbyPlaces = async (
           });
         }
 
+        // Lấy types từ place details hoặc từ place result
+        const placeTypes = placeDetails?.result?.types || place.types || [];
+        
         const restaurant: Restaurant = {
           name: place.name,
           address: place.formatted_address,
@@ -126,6 +130,8 @@ export const searchNearbyPlaces = async (
           photos: photos.length > 0 ? photos : undefined,
           menuHighlights: [],
           platforms: [],
+          // Lưu types để filter sau
+          placeTypes: placeTypes,
         };
 
         return restaurant;

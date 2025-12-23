@@ -5,6 +5,7 @@ import { findEateries } from './services/restaurantDataService';
 import Header from './components/Header';
 import Controls from './components/Controls';
 import ResultsGrid from './components/ResultsGrid';
+import LocationInput from './components/LocationInput';
 import { LocationIcon, WarningIcon } from './components/icons';
 
 const App: React.FC = () => {
@@ -65,6 +66,14 @@ const App: React.FC = () => {
       <div className="w-full max-w-6xl mx-auto">
         <Header />
         
+        <LocationInput 
+          onLocationSet={(coords) => {
+            setLocation(coords);
+            setLocationError(null);
+          }}
+          currentLocation={location}
+        />
+        
         {locationError && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded relative my-3 flex items-center" role="alert">
             <WarningIcon className="w-6 h-6 mr-3"/>
@@ -83,7 +92,7 @@ const App: React.FC = () => {
           !locationError && (
             <div className="flex items-center justify-center bg-white/50 rounded p-4 my-3">
               <LocationIcon className="w-6 h-6 mr-3 animate-pulse text-gray-500" />
-              <p className="text-lg text-gray-500">Getting your location...</p>
+              <p className="text-lg text-gray-500">Đang lấy vị trí của bạn...</p>
             </div>
           )
         )}
